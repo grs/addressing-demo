@@ -1,0 +1,36 @@
+---
+apiVersion: interconnectedcloud.github.io/v1alpha1
+kind: Qdrouterd
+metadata:
+  name: cloud1
+spec:
+  addresses:
+  - distribution: multicast
+    prefix: all
+  - distribution: multicast
+    prefix: cloud1
+  - distribution: closest
+    prefix: closest
+  count: 2
+  deploymentMode: lbfrontend
+  interRouterListeners:
+  - port: 55672
+  listeners:
+  - port: 5672
+  - port: 5671
+  - name: http
+    http: true
+    port: 8672
+    expose: true
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: connect-config
+type: Opaque
+stringData:
+  connect.json: |-
+    {
+        "scheme": "amqp",
+        "host": "cloud1"
+    }

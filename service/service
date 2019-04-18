@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+
+from __future__ import print_function, unicode_literals
+import optparse, os
+from proton import Message, Url
+from proton.handlers import MessagingHandler
+from proton.reactor import Container
+
+class Service(MessagingHandler):
+    def __init__(self):
+        super(Service, self).__init__()
+        self.name = os.getenv("NAME", os.getenv("HOSTNAME"))
+        self.colour = os.getenv("COLOUR", None)
+        self.group = os.getenv("GROUP", None)
+        role = os.getenv("OPERATION", "upper")
+        self.operation = getattr(self, role)
+        self.addresses = ["all", role]
+        if self.group:
+            self.name = "%s.%s" % (self.group, self.name)
+            self.addresses.append(self.group)
+        self.addresses.append(self.name)
+        extra = os.getenv("EXTRA_ADDRESSES", None)
+        if extra:
+            self.addresses.extend(extra.split(","))
+
+    def upper(self, s):
+        return s.upper()
+
+    def reverse(self, s):
+        return s[::-1]
+
+    def on_start(self, event):
+        event.container.container_id = self.name
+        conn = event.container.connect()
+        for address in set(self.addresses):
+            event.container.create_receiver(conn, address)
+            print("Listening on %s" % address)
+        self.sender = event.container.create_sender(conn, None)
+
+    def on_message(self, event):
+        msg = Message(address=event.message.reply_to,
+                      reply_to=self.name,
+                      correlation_id=event.message.correlation_id,
+                      body=self.operation(event.message.body))
+        if self.colour:
+            msg.properties = {"colour":unicode(self.colour)}
+        self.sender.send(msg)
+
+try:
+    Container(Service()).run()
+except KeyboardInterrupt: pass
+
+
+

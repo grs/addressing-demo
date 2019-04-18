@@ -1,0 +1,41 @@
+---
+apiVersion: interconnectedcloud.github.io/v1alpha1
+kind: Qdrouterd
+metadata:
+  name: edge1
+spec:
+  addresses:
+  - distribution: multicast
+    prefix: all
+  - distribution: multicast
+    prefix: edge1
+  - distribution: closest
+    prefix: closest
+  count: 1
+  deploymentMode: lbfrontend
+  interRouterListeners:
+  - port: 55672
+  interRouterConnectors:
+  - port: 55672
+    host: cloud1.cloud1.svc.cluster.local
+  - port: 55672
+    host: cloud2.cloud2.svc.cluster.local
+  listeners:
+  - port: 5672
+  - port: 5671
+  - name: http
+    http: true
+    port: 8672
+    expose: true
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: connect-config
+type: Opaque
+stringData:
+  connect.json: |-
+    {
+        "scheme": "amqp",
+        "host": "edge1"
+    }

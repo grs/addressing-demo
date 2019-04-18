@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Addressing Demo</title>
+  <script src="rhea.js"></script>
+</head>
+
+<body>
+  To: <input type="text" id="address" style="width:20%"/> Content: <input type="text" id="request" style="width:40%"/>
+  <button id="send" style="width:10%">Send</button>
+  <button id="clear" style="width:10%">Clear</button>
+  <div id="responses"></div>
+  <script>
+    var server = prompt("Enter details of server to use", "ws://localhost:8672");
+    var input = document.getElementById("request");
+    var target = document.getElementById("address");
+    var trigger = document.getElementById("send");
+    var clear = document.getElementById("clear");
+    var output = document.getElementById("responses");
+    target.value = "all";
+    input.focus();
+    trigger.disabled = true;
+
+    function append (txt, colour) {
+        var div = document.createElement("div");
+        div.innerHTML = txt.fontcolor(colour);
+        output.append(div);
+        input.focus();
+    }
+    trigger.onclick = function () {
+        connection.send({to:target.value, reply_to:myaddress, body:input.value});
+        input.value = "";
+    };
+    clear.onclick = function () {
+        while (output.firstChild) {
+            output.removeChild(output.firstChild);
+        }
+    }
+
+    var client = require("rhea");
+    client.on("message", function (context) {
+        var colour = context.message.application_properties.colour.toString();
+        append(context.message.body + " <i>from " + context.message.reply_to + "</i>", colour);
+    });
+    var ws = client.websocket_connect(WebSocket);
+    var connection = client.connect({"connection_details":ws(server, ["binary", "AMQPWSB10", "amqp"]), "reconnect":false});
+    var myaddress;
+    connection.open_receiver({source:{dynamic:true}});
+    client.on('receiver_open', function (context) {
+        myaddress = context.receiver.source.address;
+        trigger.disabled = false;
+    });
+
+  </script>
+</body>
+</html>
