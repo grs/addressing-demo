@@ -1,0 +1,22 @@
+BASE=$(dirname $0)
+ABSBASE=$(cd $BASE && pwd)
+
+wget -P /tmp https://raw.githubusercontent.com/interconnectedcloud/qdrouterd-operator/master/deploy/crds/interconnectedcloud_v1alpha1_qdrouterd_crd.yaml
+for r in role role_binding service_account operator; do
+    wget -P /tmp https://raw.githubusercontent.com/interconnectedcloud/qdrouterd-operator/master/deploy/$r.yaml
+done
+
+oc apply -f /tmp/interconnectedcloud_v1alpha1_qdrouterd_crd.yaml
+for p in cloud1 cloud2 edge1 edge2 edge3; do
+    oc new-project $p;
+    oc apply -f /tmp/role.yaml;
+    oc apply -f /tmp/role_binding.yaml;
+    oc apply -f /tmp/service_account.yaml;
+    oc apply -f /tmp/operator.yaml;
+    oc apply -f $ABSBASE/$p.yaml;
+done
+
+# route create by operator doesn't work over plain http yet and tls has not yet been setup
+oc expose -n edge1 service edge1 --name http --port 8672
+oc expose -n cloud1 service cloud1 --name console --port 8672
+
