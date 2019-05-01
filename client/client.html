@@ -3,10 +3,11 @@
 <head>
   <title>Addressing Demo</title>
   <script src="rhea.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 
 <body>
-  To: <input type="text" id="address" style="width:20%"/> Content: <input type="text" id="request" style="width:40%"/>
+  To: <input type="text" id="address" style="width:20%"/> Content: <input type="text" id="request" style="width:40%" onkeydown="if (event.keyCode == 13) document.getElementById('send').click()" />
   <button id="send" style="width:10%">Send</button>
   <button id="clear" style="width:10%">Clear</button>
   <div id="responses"></div>
@@ -21,14 +22,53 @@
     input.focus();
     trigger.disabled = true;
 
+    function parse_function(s, msg) {
+        var result = s.match(/(.+)\((.*)\)/);
+        if (result) {
+            msg.subject = result[1];
+            msg.application_properties = result[2].split(',').reduce(function (o, s) { var kv = s.split('='); o[kv[0]] = kv[1]; return o; }, {});
+        }
+    }
     function append (txt, colour) {
         var div = document.createElement("div");
         div.innerHTML = txt.fontcolor(colour);
         output.append(div);
         input.focus();
     }
+    function append_chart (stats) {
+        var div = document.createElement("div");
+        output.append(div);
+        var names = [];
+        var values = [];
+        var colours = [];
+        for (var colour in stats) {
+            for (var name in stats[colour]) {
+                names.push(name);
+                values.push(stats[colour][name]);
+                colours.push(colour);
+            }
+        }
+        var layout = {
+            autosize: false,
+            width: 200*values.length,
+            height: 400
+        };
+        var data = [
+            {
+                x: names,
+                y: values,
+                marker:{
+                    color: colours
+                },
+                type: 'bar'
+            }
+        ];
+        Plotly.plot(div, data, layout, {displayModeBar: false, staticPlot: true});
+    }
     trigger.onclick = function () {
-        connection.send({to:target.value, reply_to:myaddress, body:input.value});
+        var message = {to:target.value, reply_to:myaddress, body:input.value};
+        parse_function(input.value, message);
+        connection.send(message);
         input.value = "";
     };
     clear.onclick = function () {
@@ -39,16 +79,23 @@
 
     var client = require("rhea");
     client.on("message", function (context) {
-        var colour = context.message.application_properties.colour.toString();
-        append(context.message.body + " <i>from " + context.message.reply_to + "</i>", colour);
+        var colour = context.message.application_properties && context.message.application_properties.colour ? context.message.application_properties.colour.toString() : 'black';
+        if (context.message.subject === 'stats' || typeof context.message.body === 'object' ) {
+            append_chart(context.message.body);
+        } else {
+            append(context.message.body + " <i>from " + context.message.reply_to + "</i>", colour);
+        }
     });
     var ws = client.websocket_connect(WebSocket);
-    var connection = client.connect({"connection_details":ws(server, ["binary", "AMQPWSB10", "amqp"]), "reconnect":false});
+    var connection = client.connect({"connection_details":ws(server, ["binary", "AMQPWSB10", "amqp"]), "reconnect":false, "container_id":"demo-client"});
     var myaddress;
     connection.open_receiver({source:{dynamic:true}});
     client.on('receiver_open', function (context) {
         myaddress = context.receiver.source.address;
         trigger.disabled = false;
+    });
+    client.on('connection_open', function (context) {
+        document.title = 'Connected to ' + context.connection.container_id;
     });
 
   </script>

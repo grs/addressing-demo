@@ -1,0 +1,122 @@
+#!/usr/bin/env python
+
+from __future__ import print_function, unicode_literals
+import optparse, os, random, string
+from proton import Message, Url
+from proton.handlers import MessagingHandler
+from proton.reactor import Container
+
+class Client(MessagingHandler):
+    def __init__(self, address, rate):
+        super(Client, self).__init__()
+        self.address = address
+        self.rate = int(rate) or 5
+        self.stats = {}
+
+    def start(self, event):
+        self.receiver = event.container.create_receiver(event.connection, None, dynamic=True, handler=self)
+
+    def stop(self):
+        self.sender.close()
+        self.receiver.close()
+
+    def on_timer_task(self, event):
+        print("timer fired (rate=%s)" % self.rate)
+        sent = 0
+        while self.sender.credit and sent < self.rate:
+            self.sender.send(Message(reply_to=self.receiver.remote_source.address, correlation_id="responses", body='foobarbaz'))
+            sent += 1
+            print("sent %s" % sent)
+            if sent >= self.rate:
+                print("done")
+            else:
+                print("%s is less than %s!?!"% (sent, self.rate))
+        print("rescheduling")
+        event.container.schedule(1, self)
+
+    def on_link_opened(self, event):
+        if event.receiver == self.receiver:
+            self.sender = event.container.create_sender(event.connection, self.address, handler=self)
+        elif event.sender == self.sender:
+            event.container.schedule(1, self)
+
+    def increment_stats(self, index, key):
+        if not self.stats.has_key(index):
+            self.stats[index] = {}
+        if self.stats[index].has_key(key):
+            self.stats[index][key] += 1
+        else:
+            self.stats[index][key] = 1
+
+    def on_message(self, event):
+        if event.message.properties and "colour" in event.message.properties:
+            self.increment_stats(event.message.properties["colour"], event.message.reply_to)
+
+class Service(MessagingHandler):
+    def __init__(self):
+        super(Service, self).__init__()
+        self.name = os.getenv("NAME", os.getenv("HOSTNAME"))
+        self.addresses = [self.name, "loadgen", "all"]
+        self.client = None
+        self.default_target = os.getenv("DEFAULT_TARGET", "upper")
+
+    def on_start(self, event):
+        event.container.container_id = self.name
+        conn = event.container.connect()
+        for address in set(self.addresses):
+            event.container.create_receiver(conn, address)
+            print("Listening on %s" % address)
+        self.sender = event.container.create_sender(conn, None)
+
+    def start(self, context, address, rate):
+        if self.client:
+            return False;
+        else:
+            self.client = Client(address, rate)
+            self.client.start(context)
+            return True
+
+    def stop(self):
+        if self.client:
+            self.client.stop()
+            self.client = None
+            return True;
+        else:
+            return False
+
+    def get_stats(self):
+        if self.client:
+            return self.client.stats
+        else:
+            return {}
+
+    def on_message(self, event):
+        reply = Message(address=event.message.reply_to,
+                        reply_to=self.name,
+                        correlation_id=event.message.correlation_id)
+
+        if event.message.subject == "start":
+            print('start requested: %s', event.message.properties)
+            if self.start(event, event.message.properties.get("target", self.default_target), event.message.properties.get("rate", 5)):
+                reply.body = "started"
+            else:
+                reply.body = "already running"
+        elif event.message.subject == "stop":
+            if self.stop():
+                reply.body = "stopped"
+            else:
+                reply.body = "not running"
+        elif event.message.subject == "get_stats":
+            reply.subject = "stats"
+            reply.body = self.get_stats()
+        else:
+            reply.body = event.message.body
+
+        self.sender.send(reply)
+
+try:
+    Container(Service()).run()
+except KeyboardInterrupt: pass
+
+
+
