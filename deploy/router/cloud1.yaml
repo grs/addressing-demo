@@ -1,6 +1,6 @@
 ---
 apiVersion: interconnectedcloud.github.io/v1alpha1
-kind: Qdrouterd
+kind: Qdr
 metadata:
   name: cloud1
 spec:
@@ -11,8 +11,10 @@ spec:
     prefix: cloud1
   - distribution: closest
     prefix: closest
-  count: 2
-  deploymentMode: lbfrontend
+  deploymentPlan:
+    size: 2
+    placement: Any
+    role: interior
   interRouterListeners:
   - port: 55672
   listeners:

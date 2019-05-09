@@ -1,6 +1,6 @@
 ---
 apiVersion: interconnectedcloud.github.io/v1alpha1
-kind: Qdrouterd
+kind: Qdr
 metadata:
   name: edge2
 spec:
@@ -11,8 +11,10 @@ spec:
     prefix: edge2
   - distribution: closest
     prefix: closest
-  count: 1
-  deploymentMode: lbfrontend
+  deploymentPlan:
+    size: 2
+    placement: Any
+    role: interior
   interRouterListeners:
   - port: 55672
   interRouterConnectors:

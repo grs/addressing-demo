@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: orange-reverse
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       application: orange-reverse
