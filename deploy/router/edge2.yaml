@@ -12,7 +12,7 @@ spec:
   - distribution: closest
     prefix: closest
   deploymentPlan:
-    size: 2
+    size: 1
     placement: Any
     role: interior
   interRouterListeners:

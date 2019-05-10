@@ -15,4 +15,3 @@ for p in cloud1 cloud2 edge1 edge2 edge3; do
     oc apply -f /tmp/operator.yaml;
     oc apply -f $ABSBASE/$p.yaml;
 done
-
