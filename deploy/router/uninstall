@@ -1,9 +1,5 @@
+oc delete -f /tmp/operator/
+
 for p in cloud1 cloud2 edge1 edge2 edge3; do
     oc delete project $p;
 done
-
-for r in role role_binding service_account operator; do
-    rm /tmp/$r.yaml*
-done
-
-rm /tmp/interconnectedcloud*

@@ -1,17 +1,15 @@
 BASE=$(dirname $0)
 ABSBASE=$(cd $BASE && pwd)
 
-wget -P /tmp https://raw.githubusercontent.com/interconnectedcloud/qdr-operator/master/deploy/crds/interconnectedcloud_v1alpha1_qdr_crd.yaml
-for r in role role_binding service_account operator; do
-    wget -P /tmp https://raw.githubusercontent.com/interconnectedcloud/qdr-operator/master/deploy/$r.yaml
-done
+$ABSBASE/fetch_resources
 
-oc apply -f /tmp/interconnectedcloud_v1alpha1_qdr_crd.yaml
+oc apply -f /tmp/operator/interconnectedcloud_v1alpha1_interconnect_crd.yaml
+
 for p in cloud1 cloud2 edge1 edge2 edge3; do
     oc new-project $p;
-    oc apply -f /tmp/role.yaml;
-    oc apply -f /tmp/role_binding.yaml;
-    oc apply -f /tmp/service_account.yaml;
-    oc apply -f /tmp/operator.yaml;
+    oc apply -f /tmp/operator/role.yaml;
+    oc apply -f /tmp/operator/role_binding.yaml;
+    oc apply -f /tmp/operator/service_account.yaml;
+    oc apply -f /tmp/operator/operator.yaml;
     oc apply -f $ABSBASE/$p.yaml;
 done

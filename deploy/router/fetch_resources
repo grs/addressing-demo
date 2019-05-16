@@ -1,0 +1,5 @@
+rm -rf /tmp/operator/
+wget -P /tmp/operator https://raw.githubusercontent.com/interconnectedcloud/qdr-operator/master/deploy/crds/interconnectedcloud_v1alpha1_interconnect_crd.yaml
+for r in role role_binding service_account operator; do
+    wget -P /tmp/operator https://raw.githubusercontent.com/interconnectedcloud/qdr-operator/master/deploy/$r.yaml
+done

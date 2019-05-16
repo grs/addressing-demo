@@ -1,6 +1,6 @@
 ---
 apiVersion: interconnectedcloud.github.io/v1alpha1
-kind: Qdr
+kind: Interconnect
 metadata:
   name: cloud2
 spec:

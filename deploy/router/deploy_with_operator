@@ -1,0 +1,14 @@
+BASE=$(dirname $0)
+ABSBASE=$(cd $BASE && pwd)
+
+$ABSBASE/fetch_resources
+
+oc apply -f /tmp/operator/interconnectedcloud_v1alpha1_interconnect_crd.yaml
+p=${1:cloud1}
+f=${2:$p}
+oc new-project $p;
+oc apply -f /tmp/operator/role.yaml;
+oc apply -f /tmp/operator/role_binding.yaml;
+oc apply -f /tmp/operator/service_account.yaml;
+oc apply -f /tmp/operator/operator.yaml;
+oc apply -f $ABSBASE/$f.yaml;
